@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel AI Assistant — Free</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:#217346; --green-lt:#2d9f5e; --green-dk:#185a38;
+    --sheet:#f0f4f1; --white:#ffffff; --ink:#1a1f1c; --ink-2:#4a5550;
+    --border:#c8d5cc; --accent:#e8772a; --shadow:0 2px 12px rgba(33,115,70,.10);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--sheet);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+
+  /* ── API Key Banner ── */
+  #apiBanner{background:var(--green-dk);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px}
+  #apiBanner a{color:#a8dfc0;text-underline-offset:2px}
+  #apiBanner input{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:5px 10px;color:#fff;font-size:12px;font-family:'IBM Plex Mono',monospace;width:280px;outline:none}
+  #apiBanner input::placeholder{color:rgba(255,255,255,.5)}
+  #apiBanner input:focus{border-color:#a8dfc0}
+  .model-select{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:5px 10px;color:#fff;font-size:12px;outline:none;cursor:pointer}
+  .model-select option{background:var(--green-dk);color:#fff}
+  .save-key-btn{background:var(--accent);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .save-key-btn:hover{opacity:.85}
+  .key-status{font-size:11px;opacity:.75;margin-left:auto}
+
+  /* ── Header ── */
+  header{background:var(--green);padding:0 24px;height:48px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 0 rgba(0,0,0,.18)}
+  .logo-icon{width:26px;height:26px;background:var(--white);border-radius:4px;display:grid;place-items:center;flex-shrink:0}
+  header h1{font-size:15px;font-weight:600;color:#fff;letter-spacing:.01em}
+  header .badge{margin-left:auto;background:rgba(255,255,255,.15);color:#d4edda;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace}
+
+  /* ── Main ── */
+  main{flex:1;display:grid;grid-template-columns:320px 1fr;max-width:1400px;width:100%;margin:0 auto;padding:16px;gap:14px}
+  .panel{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+  .panel-head{padding:10px 14px;border-bottom:1px solid var(--border);background:#f7faf8;font-size:11px;font-weight:600;color:var(--ink-2);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+  .panel-head .dot{width:7px;height:7px;background:var(--green);border-radius:50%}
+
+  /* ── Spreadsheet ── */
+  .sheet-panel{grid-column:2}
+  .formula-bar{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);background:#f7faf8}
+  .cell-ref{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;background:var(--white);border:1px solid var(--border);border-radius:4px;padding:3px 8px;width:52px;color:var(--green-dk);text-align:center}
+  .fx-label{color:var(--ink-2);font-size:14px;font-style:italic;opacity:.6}
+  .formula-input{flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:3px 10px;color:var(--ink);background:var(--white);outline:none}
+  .formula-input:focus{border-color:var(--green)}
+  .table-wrap{overflow:auto;flex:1}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  thead th{background:#eef3ef;border:1px solid var(--border);padding:5px 10px;font-size:11px;font-weight:600;color:var(--ink-2);text-align:center;position:sticky;top:0;z-index:2;letter-spacing:.05em;min-width:88px}
+  thead th:first-child{width:34px;min-width:34px;background:#e4ece6}
+  tbody tr td:first-child{background:#eef3ef;font-size:11px;font-weight:600;color:var(--ink-2);text-align:center;border:1px solid var(--border);padding:4px}
+  tbody tr:nth-child(odd) td:not(:first-child){background:var(--white)}
+  tbody tr:nth-child(even) td:not(:first-child){background:#f3f7f4}
+  tbody td:not(:first-child){border:1px solid var(--border);padding:4px 9px;font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;transition:background .1s;min-width:88px}
+  tbody td.selected{background:#d7eeda!important;outline:2px solid var(--green);outline-offset:-2px}
+  tbody td.ai-filled{background:#e8f5e2!important;color:var(--green-dk);font-weight:500}
+  .action-log{border-top:1px solid var(--border);padding:5px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-2);background:#f0f4f1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:26px;display:flex;align-items:center;gap:8px}
+  .status-dot{width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ── Chat ── */
+  .chat-panel{grid-column:1;grid-row:1}
+  .messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .msg{display:flex;gap:8px;align-items:flex-start;animation:pop .2s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .msg.user{flex-direction:row-reverse}
+  .avatar{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:12px;flex-shrink:0;font-weight:700}
+  .avatar.ai{background:var(--green);color:#fff;font-size:10px}
+  .avatar.user{background:var(--accent);color:#fff}
+  .bubble{max-width:90%;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.55}
+  .msg.ai .bubble{background:#f0f7f2;border:1px solid #cde5d4;color:var(--ink);border-top-left-radius:2px}
+  .msg.user .bubble{background:var(--green);color:#fff;border-top-right-radius:2px}
+  .bubble code{font-family:'IBM Plex Mono',monospace;font-size:11px;background:rgba(0,0,0,.07);padding:1px 4px;border-radius:3px}
+  .bubble .tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--green);color:#fff;padding:1px 6px;border-radius:3px;margin-top:4px}
+  .typing-indicator{display:flex;gap:4px;padding:4px 0}
+  .typing-indicator span{width:7px;height:7px;background:var(--green);border-radius:50%;animation:bounce 1s infinite;opacity:.7}
+  .typing-indicator span:nth-child(2){animation-delay:.15s}
+  .typing-indicator span:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,60%,100%{transform:none}30%{transform:translateY(-6px)}}
+
+  /* ── Input ── */
+  .input-area{padding:10px;border-top:1px solid var(--border);background:#f7faf8}
+  .quick-actions{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+  .quick-btn{font-size:11px;padding:3px 8px;border-radius:14px;border:1px solid var(--border);background:var(--white);color:var(--ink-2);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+  .quick-btn:hover{background:var(--green);color:#fff;border-color:var(--green)}
+  .input-row{display:flex;gap:8px}
+  textarea{flex:1;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:6px;padding:7px 10px;resize:none;height:56px;outline:none;color:var(--ink);background:var(--white);transition:border-color .15s}
+  textarea:focus{border-color:var(--green)}
+  .send-btn{background:var(--green);color:#fff;border:none;border-radius:6px;width:42px;cursor:pointer;display:grid;place-items:center;transition:background .15s;flex-shrink:0}
+  .send-btn:hover{background:var(--green-lt)}
+  .send-btn:disabled{background:var(--border);cursor:not-allowed}
+
+  @media(max-width:860px){main{grid-template-columns:1fr;grid-template-rows:auto auto}.sheet-panel{grid-column:1}.chat-panel{grid-column:1;grid-row:2}}
+</style>
+</head>
+<body>
+
+<!-- API Key Banner -->
+<div id="apiBanner">
+  <span>🔑 Free API key from</span>
+  <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>
+  <span style="opacity:.6">or</span>
+  <a href="https://console.groq.com/keys" target="_blank">Groq Console</a>
+  <span>→</span>
+  <input type="password" id="apiKeyInput" placeholder="Paste your API key here…">
+  <select class="model-select" id="modelSelect">
+    <optgroup label="Google Gemini (Free)">
+      <option value="gemini:gemini-2.0-flash">Gemini 2.0 Flash ⚡ (Free)</option>
+      <option value="gemini:gemini-1.5-flash">Gemini 1.5 Flash (Free)</option>
+    </optgroup>
+    <optgroup label="Groq — Open Source (Free)">
+      <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B (Free)</option>
+      <option value="groq:mixtral-8x7b-32768">Mixtral 8×7B (Free)</option>
+      <option value="groq:gemma2-9b-it">Gemma 2 9B (Free)</option>
+    </optgroup>
+  </select>
+  <button class="save-key-btn" onclick="saveKey()">Save &amp; Connect</button>
+  <span class="key-status" id="keyStatus">No key set</span>
+</div>
+
+<header>
+  <div class="logo-icon">
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+      <rect x="1" y="1" width="7" height="7" fill="#217346"/>
+      <rect x="10" y="1" width="7" height="7" fill="#217346"/>
+      <rect x="1" y="10" width="7" height="7" fill="#217346"/>
+      <rect x="10" y="10" width="7" height="7" fill="#185a38"/>
+    </svg>
+  </div>
+  <h1>Excel AI Assistant</h1>
+  <span class="badge" id="modelBadge">No model selected</span>
+</header>
+
+<main>
+  <!-- Chat -->
+  <div class="panel chat-panel">
+    <div class="panel-head"><span class="dot"></span>AI Assistant</div>
+    <div class="messages" id="messages">
+      <div class="msg ai">
+        <div class="avatar ai">AI</div>
+        <div class="bubble">
+          👋 Hi! I'm your <strong>free</strong> Excel AI assistant.<br><br>
+          To get started:<br>
+          1. Grab a free API key from <strong>Google AI Studio</strong> (no credit card) or <strong>Groq</strong><br>
+          2. Paste it in the bar above and click <strong>Save &amp; Connect</strong><br><br>
+          Then ask me anything about your spreadsheet!
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="quickAsk('Sum column B values in B10')">Sum col B</button>
+        <button class="quick-btn" onclick="quickAsk('Fill empty cells in column C and D with realistic sales data')">Fill data</button>
+        <button class="quick-btn" onclick="quickAsk('Add SUM formula to E2:E9 for each product row')">Row totals</button>
+        <button class="quick-btn" onclick="quickAsk('Explain this spreadsheet to me')">Explain</button>
+        <button class="quick-btn" onclick="quickAsk('Add growth % formula to column F')">Growth %</button>
+      </div>
+      <div class="input-row">
+        <textarea id="userInput" placeholder="Ask about your spreadsheet… (Enter to send)" onkeydown="handleKey(event)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet -->
+  <div class="panel sheet-panel">
+    <div class="panel-head"><span class="dot"></span>Spreadsheet</div>
+    <div class="formula-bar">
+      <div class="cell-ref" id="cellRef">A1</div>
+      <span class="fx-label">fx</span>
+      <input class="formula-input" id="formulaBar" placeholder="Value or formula" oninput="syncFromFormula()">
+    </div>
+    <div class="table-wrap"><table id="sheet"></table></div>
+    <div class="action-log"><span class="status-dot"></span><span id="logText">Ready — select a cell to begin</span></div>
+  </div>
+</main>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+let API_KEY = '';
+let PROVIDER = 'gemini';
+let MODEL = 'gemini-2.0-flash';
+
+function saveKey() {
+  const raw = document.getElementById('apiKeyInput').value.trim();
+  const sel = document.getElementById('modelSelect').value;
+  if (!raw) { alert('Please paste an API key first.'); return; }
+  API_KEY = raw;
+  [PROVIDER, MODEL] = sel.split(':');
+  const label = document.getElementById('modelSelect').options[document.getElementById('modelSelect').selectedIndex].text;
+  document.getElementById('keyStatus').textContent = '✓ Connected · ' + label;
+  document.getElementById('keyStatus').style.color = '#a8dfc0';
+  document.getElementById('modelBadge').textContent = label;
+  addMessage('ai', `✅ Connected to <strong>${label}</strong> — free & ready! Ask me anything about your spreadsheet.`);
+}
+
+// ── Spreadsheet ──────────────────────────────────────────────────────────────
+const ROWS = 12, COLS = ['A','B','C','D','E','F','G'];
+let selectedCell = null;
+let cellData = {};
+const seed = {
+  A1:'Product',B1:'Jan Sales',C1:'Feb Sales',D1:'Mar Sales',E1:'Total',F1:'Growth %',G1:'Category',
+  A2:'Laptop Pro',B2:'48200',C2:'51400',G2:'Electronics',
+  A3:'Wireless Earbuds',B3:'18750',D3:'21300',G3:'Electronics',
+  A4:'Office Chair',B4:'9400',C4:'8200',G4:'Furniture',
+  A5:'Standing Desk',B5:'12800',C5:'13500',D5:'14200',G5:'Furniture',
+  A6:'Monitor 4K',B6:'22100',C6:'24500',G6:'Electronics',
+  A7:'Keyboard',B7:'6300',C7:'7100',D7:'6900',G7:'Accessories',
+  A8:'Mouse Pro',B8:'4800',C8:'5200',G8:'Accessories',
+  A9:'Webcam HD',B9:'8900',C9:'9600',D9:'10200',G9:'Electronics',
+  A10:'TOTAL',
+};
+Object.assign(cellData, seed);
+
+function buildSheet() {
+  const t = document.getElementById('sheet');
+  t.innerHTML = '';
+  const hr = t.createTHead().insertRow();
+  const th0 = document.createElement('th'); th0.textContent=''; hr.appendChild(th0);
+  COLS.forEach(l => { const th = document.createElement('th'); th.textContent=l; hr.appendChild(th); });
+  const body = t.createTBody();
+  for (let r = 1; r <= ROWS; r++) {
+    const tr = body.insertRow();
+    const rowTd = tr.insertCell(); rowTd.textContent = r;
+    COLS.forEach(col => {
+      const td = tr.insertCell();
+      const key = col + r;
+      td.dataset.cell = key;
+      td.textContent = cellData[key] || '';
+      if (r === 1) td.style.fontWeight = '600';
+      td.addEventListener('click', () => selectCell(key, td));
+      td.addEventListener('blur', () => { cellData[key] = td.textContent.trim(); updateFormulaBar(); });
+    });
+  }
+}
+
+function selectCell(key, td) {
+  if (selectedCell) {
+    const prev = document.querySelector(`[data-cell="${selectedCell}"]`);
+    if (prev) { prev.classList.remove('selected'); prev.contentEditable='false'; }
+  }
+  selectedCell = key;
+  td.classList.add('selected');
+  td.contentEditable = 'true';
+  td.focus();
+  document.getElementById('cellRef').textContent = key;
+  updateFormulaBar();
+  setLog(`Selected ${key}`);
+}
+
+function updateFormulaBar() {
+  document.getElementById('formulaBar').value = selectedCell ? (cellData[selectedCell]||'') : '';
+}
+function syncFromFormula() {
+  if (!selectedCell) return;
+  const v = document.getElementById('formulaBar').value;
+  cellData[selectedCell] = v;
+  const td = document.querySelector(`[data-cell="${selectedCell}"]`);
+  if (td) td.textContent = v;
+}
+function setCell(key, value) {
+  cellData[key] = value;
+  const td = document.querySelector(`[data-cell="${key}"]`);
+  if (td) { td.textContent = value; td.classList.add('ai-filled'); setTimeout(()=>td.classList.remove('ai-filled'),3000); }
+  if (selectedCell===key) updateFormulaBar();
+}
+function setLog(msg) { document.getElementById('logText').textContent = msg; }
+
+// ── Chat ──────────────────────────────────────────────────────────────────
+const history = [];
+
+function addMessage(role, html) {
+  const c = document.getElementById('messages');
+  const d = document.createElement('div'); d.className=`msg ${role}`;
+  const av = document.createElement('div'); av.className=`avatar ${role}`; av.textContent = role==='ai'?'AI':'👤';
+  const b = document.createElement('div'); b.className='bubble'; b.innerHTML=html;
+  d.appendChild(av); d.appendChild(b); c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+function showTyping() {
+  const c = document.getElementById('messages');
+  const d = document.createElement('div'); d.className='msg ai'; d.id='typing';
+  const av = document.createElement('div'); av.className='avatar ai'; av.textContent='AI';
+  const b = document.createElement('div'); b.className='bubble';
+  b.innerHTML='<div class="typing-indicator"><span></span><span></span><span></span></div>';
+  d.appendChild(av); d.appendChild(b); c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+function removeTyping() { const t=document.getElementById('typing'); if(t)t.remove(); }
+
+function getSheetContext() {
+  const rows=[];
+  for(let r=1;r<=ROWS;r++){
+    const row=COLS.map(c=>`${c}${r}:${cellData[c+r]||'(empty)'}`).join(' | ');
+    rows.push(`Row ${r}: ${row}`);
+  }
+  return rows.join('\n');
+}
+
+const SYSTEM = `You are an Excel AI assistant embedded in a spreadsheet app.
+Current spreadsheet (${ROWS} rows × ${COLS.length} cols):
+SHEET_DATA
+
+Selected cell: SELECTED_CELL
+
+You can answer questions, generate Excel formulas, and update cells.
+When you want to update cells, end your reply with this exact block:
+<CELL_UPDATES>
+{"updates":[{"cell":"E2","value":"=B2+C2+D2"}]}
+</CELL_UPDATES>
+Rules: Use Excel-style formulas (start with =). Be concise. Explain briefly what you did.`;
+
+async function callGemini(userText) {
+  const sysPrompt = SYSTEM.replace('SHEET_DATA', getSheetContext()).replace('SELECTED_CELL', selectedCell||'none');
+  const contents = history.map(m => ({ role: m.role==='assistant'?'model':'user', parts:[{text:m.content}] }));
+  contents.push({ role:'user', parts:[{text: sysPrompt + '\n\nUser: ' + userText}] });
+
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ contents, generationConfig:{maxOutputTokens:1000} })
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+}
+
+async function callGroq(userText) {
+  const sysPrompt = SYSTEM.replace('SHEET_DATA', getSheetContext()).replace('SELECTED_CELL', selectedCell||'none');
+  const msgs = [{ role:'system', content: sysPrompt }];
+  history.forEach(m => msgs.push({ role: m.role==='assistant'?'assistant':'user', content: m.content }));
+  msgs.push({ role:'user', content: userText });
+
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${API_KEY}`},
+    body: JSON.stringify({ model: MODEL, messages: msgs, max_tokens: 1000 })
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return data.choices?.[0]?.message?.content || 'No response.';
+}
+
+async function sendMessage() {
+  if (!API_KEY) { addMessage('ai','⚠️ Please enter your free API key in the bar above first!'); return; }
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  document.getElementById('sendBtn').disabled = true;
+  addMessage('user', text);
+  history.push({ role:'user', content: text });
+  showTyping();
+  setLog('AI thinking…');
+
+  try {
+    const rawText = PROVIDER==='gemini' ? await callGemini(text) : await callGroq(text);
+
+    const updateMatch = rawText.match(/<CELL_UPDATES>([\s\S]*?)<\/CELL_UPDATES>/);
+    let display = rawText.replace(/<CELL_UPDATES>[\s\S]*?<\/CELL_UPDATES>/g,'').trim();
+    display = display.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+
+    if (updateMatch) {
+      try {
+        const parsed = JSON.parse(updateMatch[1].trim());
+        const count = parsed.updates?.length || 0;
+        parsed.updates?.forEach(u => setCell(u.cell, u.value));
+        if (count) { display += `<br><span class="tag">✓ Updated ${count} cell${count>1?'s':''}</span>`; setLog(`AI updated ${count} cell(s)`); }
+      } catch(e) {}
+    } else { setLog('AI responded'); }
+
+    removeTyping();
+    addMessage('ai', display);
+    history.push({ role:'assistant', content: rawText });
+    if (history.length > 20) history.splice(0, 2);
+  } catch(err) {
+    removeTyping();
+    addMessage('ai', `<strong>Error:</strong> ${err.message}<br><small>Check your API key and try again.</small>`);
+    setLog('Error — check API key');
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function quickAsk(text) { document.getElementById('userInput').value=text; sendMessage(); }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+
+buildSheet();
+</script>
+</body>
+</html>
